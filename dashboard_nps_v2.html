@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard NPS 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #0a0f1e; min-height: 100vh; padding: 24px; color: #e2e8f0; }
+
+  .tag { display: inline-block; background: #f59e0b; color: #0a0f1e; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; margin-bottom: 10px; }
+  h1 { font-size: 22px; font-weight: 800; color: #e2e8f0; margin-bottom: 4px; }
+  .period { font-size: 12px; color: #475569; margin-bottom: 24px; }
+
+  .kpi-row { display: flex; gap: 14px; margin-bottom: 24px; }
+  .kpi-card { flex: 1; background: #111827; border-radius: 14px; padding: 20px 24px; border: 1px solid #1e293b; position: relative; overflow: hidden; transition: transform 0.2s; }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
+  .kpi-label { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .kpi-score { font-size: 52px; font-weight: 900; line-height: 1; margin-bottom: 6px; color: var(--accent); }
+  .kpi-sub { font-size: 12px; color: #475569; }
+  .kpi-trend { font-size: 11px; font-weight: 700; margin-top: 8px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .chart-wrap { background: #111827; border-radius: 16px; border: 1px solid #1e293b; padding: 24px; }
+  .section-title { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; }
+
+  .line-chart-wrap { position: relative; height: 200px; }
+  svg.line-chart { width: 100%; height: 100%; overflow: visible; }
+
+  .tables-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .table-wrap { background: #111827; border-radius: 16px; border: 1px solid #1e293b; overflow: hidden; }
+  .table-header { padding: 12px 20px; border-bottom: 1px solid #1e293b; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: #0f172a; }
+  th { padding: 9px 14px; font-size: 10px; color: #475569; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #1e293b; text-align: center; }
+  th:first-child { text-align: left; }
+  tbody tr { border-bottom: 1px solid #0f172a; transition: background 0.15s; }
+  tbody tr:hover { background: #1e293b; }
+  td { padding: 10px 14px; font-size: 12px; color: #cbd5e1; text-align: center; }
+  td:first-child { font-weight: 700; color: #e2e8f0; text-align: left; }
+  tr.total-row { background: #1e293b; border-top: 2px solid #334155; }
+  tr.total-row td { font-weight: 800; }
+  .score-good { color: #22c55e; font-weight: 800; font-size: 13px; }
+  .score-ok { color: #f59e0b; font-weight: 800; font-size: 13px; }
+  .score-bad { color: #ef4444; font-weight: 800; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="tag">NPS — Recrutement 2026</div>
+<h1>NPS Candidat & Manager</h1>
+<p class="period">Janvier → Mai 2026 · Données réelles collectées</p>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="two-col">
+  <div class="chart-wrap">
+    <div class="section-title" style="color:#6366f1">📈 NPS Candidat — Évolution</div>
+    <div class="line-chart-wrap"><svg class="line-chart" id="candidatLine"></svg></div>
+  </div>
+  <div class="chart-wrap">
+    <div class="section-title" style="color:#ec4899">📈 NPS Manager — Évolution</div>
+    <div class="line-chart-wrap"><svg class="line-chart" id="mgrLine"></svg></div>
+  </div>
+</div>
+
+<div class="tables-row">
+  <div class="table-wrap">
+    <div class="table-header">NPS Candidat — Détail mensuel</div>
+    <table>
+      <thead><tr><th>Mois</th><th>Réponses</th><th>Score NPS</th></tr></thead>
+      <tbody id="candidatTable"></tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header">NPS Manager — Détail mensuel</div>
+    <table>
+      <thead><tr><th>Mois</th><th>Réponses</th><th>Score NPS</th></tr></thead>
+      <tbody id="mgrTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const candidatData = [
+  { month: 'Fév', responses: 9,  nps: 67 },
+  { month: 'Mar', responses: 26, nps: 73 },
+  { month: 'Avr', responses: 31, nps: 68 },
+  { month: 'Mai', responses: 36, nps: 69 },
+];
+const mgrData = [
+  { month: 'Jan', responses: 4,  nps: 50 },
+  { month: 'Fév', responses: 7,  nps: 71 },
+  { month: 'Mar', responses: 13, nps: 62 },
+  { month: 'Avr', responses: 18, nps: 61 },
+  { month: 'Mai', responses: 21, nps: 57 },
+];
+
+function avg(arr, key) { return Math.round(arr.reduce((s,d) => s+d[key], 0) / arr.length); }
+function sum(arr, key) { return arr.reduce((s,d) => s+d[key], 0); }
+function npsColor(s) { return s >= 70 ? '#22c55e' : s >= 50 ? '#f59e0b' : '#ef4444'; }
+function npsClass(s) { return s >= 70 ? 'score-good' : s >= 50 ? 'score-ok' : 'score-bad'; }
+
+// KPIs
+const cAvg = avg(candidatData, 'nps'), mAvg = avg(mgrData, 'nps');
+const cLast = candidatData[candidatData.length-1].nps, mLast = mgrData[mgrData.length-1].nps;
+const cPrev = candidatData[candidatData.length-2]?.nps, mPrev = mgrData[mgrData.length-2]?.nps;
+
+document.getElementById('kpiRow').innerHTML = `
+  <div class="kpi-card" style="--accent:${npsColor(cAvg)}">
+    <div class="kpi-label">NPS Candidat — Moyenne 2026</div>
+    <div class="kpi-score">${cAvg}</div>
+    <div class="kpi-sub">${sum(candidatData,'responses')} réponses · Fév → Mai 2026</div>
+    <div class="kpi-trend" style="color:${cLast >= cPrev ? '#22c55e' : '#ef4444'}">${cLast >= cPrev ? '▲' : '▼'} Dernier mois : ${cLast}</div>
+  </div>
+  <div class="kpi-card" style="--accent:${npsColor(mAvg)}">
+    <div class="kpi-label">NPS Manager — Moyenne 2026</div>
+    <div class="kpi-score">${mAvg}</div>
+    <div class="kpi-sub">${sum(mgrData,'responses')} réponses · Jan → Mai 2026</div>
+    <div class="kpi-trend" style="color:${mLast >= mPrev ? '#22c55e' : '#ef4444'}">${mLast >= mPrev ? '▲' : '▼'} Dernier mois : ${mLast}</div>
+  </div>
+`;
+
+function buildLine(svgId, data, color) {
+  const svg = document.getElementById(svgId);
+  const W = svg.parentElement.offsetWidth || 400;
+  const H = 190;
+  const pad = { top: 24, right: 20, bottom: 28, left: 32 };
+  const iW = W - pad.left - pad.right;
+  const iH = H - pad.top - pad.bottom;
+  const allNps = data.map(d => d.nps);
+  const minV = Math.min(...allNps) - 15;
+  const maxV = Math.max(...allNps) + 15;
+  const xS = i => pad.left + (data.length > 1 ? (i / (data.length - 1)) * iW : iW / 2);
+  const yS = v => pad.top + iH - ((v - minV) / (maxV - minV)) * iH;
+
+  let html = '';
+  // Grid
+  [0, 25, 50, 75, 100].filter(v => v >= minV - 5 && v <= maxV + 5).forEach(v => {
+    const y = yS(v);
+    html += `<line x1="${pad.left}" y1="${y}" x2="${W-pad.right}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    html += `<text x="${pad.left-4}" y="${y+4}" fill="#475569" font-size="9" text-anchor="end">${v}</text>`;
+  });
+
+  const pathD = data.map((d,i) => `${i===0?'M':'L'} ${xS(i)} ${yS(d.nps)}`).join(' ');
+  const areaD = `${pathD} L ${xS(data.length-1)} ${H-pad.bottom} L ${xS(0)} ${H-pad.bottom} Z`;
+
+  html += `<defs><linearGradient id="g_${svgId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.25"/><stop offset="100%" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>`;
+  html += `<path d="${areaD}" fill="url(#g_${svgId})"/>`;
+  html += `<path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  data.forEach((d,i) => {
+    const x = xS(i), y = yS(d.nps);
+    html += `<circle cx="${x}" cy="${y}" r="5" fill="${color}" stroke="#0a0f1e" stroke-width="2"/>`;
+    html += `<text x="${x}" y="${y-10}" fill="${color}" font-size="11" font-weight="800" text-anchor="middle">${d.nps}</text>`;
+    html += `<text x="${x}" y="${H-pad.bottom+14}" fill="#64748b" font-size="10" text-anchor="middle">${d.month}</text>`;
+  });
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = html;
+}
+
+function buildTable(tbodyId, data) {
+  const tbody = document.getElementById(tbodyId);
+  data.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.month} 2026</td><td>${d.responses}</td><td class="${npsClass(d.nps)}">${d.nps}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (data.length > 1) {
+    const a = avg(data, 'nps');
+    const tr = document.createElement('tr');
+    tr.className = 'total-row';
+    tr.innerHTML = `<td>Moyenne</td><td>${sum(data,'responses')}</td><td class="${npsClass(a)}">${a}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+setTimeout(() => {
+  buildLine('candidatLine', candidatData, '#6366f1');
+  buildLine('mgrLine', mgrData, '#ec4899');
+}, 100);
+buildTable('candidatTable', candidatData);
+buildTable('mgrTable', mgrData);
+</script>
+</body>
+</html>
